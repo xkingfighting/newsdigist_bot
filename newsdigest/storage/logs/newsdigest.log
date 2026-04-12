@@ -1,0 +1,227 @@
+2026-04-13 00:00:47 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:00:47 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler shut down
+2026-04-13 00:00:47 | INFO     | apscheduler.scheduler | Scheduler has been shut down
+2026-04-13 00:00:47 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:00:47 | ERROR    | newsdigest.app.adapters.talkonly | getUpdates request failed: 
+2026-04-13 00:00:47 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:00:48 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:00:48 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:00:48 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:00:53 | INFO     | newsdigest.main | Using FakeSearchProvider (dev mode)
+2026-04-13 00:00:53 | INFO     | newsdigest.main | Starting NewsDigest (env=development)
+2026-04-13 00:00:53 | INFO     | newsdigest.main | DB warmed up, offset=1123
+2026-04-13 00:00:53 | INFO     | newsdigest.app.adapters.talkonly | Switched to polling mode: Webhook was deleted. Connect mode switched to polling.
+2026-04-13 00:00:53 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter started in polling mode
+2026-04-13 00:00:53 | INFO     | apscheduler.scheduler | Scheduler started
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler started
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restoring scheduled jobs from database...
+2026-04-13 00:00:53 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_小米' at 23:30 tz=Asia/Singapore, next_run=2026-04-13 23:30:00+08:00
+2026-04-13 00:00:53 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_苹果' at 23:37 tz=Asia/Singapore, next_run=2026-04-13 23:37:00+08:00
+2026-04-13 00:00:53 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_ai' at 23:39 tz=Asia/Singapore, next_run=2026-04-13 23:39:00+08:00
+2026-04-13 00:00:53 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restored 3 scheduled jobs
+2026-04-13 00:00:53 | INFO     | newsdigest.main | Polling started with offset=1123
+2026-04-13 00:06:07 | INFO     | newsdigest.main | Poll returned 1 msgs in 674ms, offset→1129
+2026-04-13 00:06:07 | INFO     | newsdigest.app.controllers.command_handler | Command received: /list args=[] user=7 chat=private:7
+2026-04-13 00:06:23 | INFO     | newsdigest.main | Poll returned 1 msgs in 1336ms, offset→1130
+2026-04-13 00:06:23 | INFO     | newsdigest.app.controllers.command_handler | Command received: /list args=[] user=7 chat=private:7
+2026-04-13 00:06:49 | INFO     | newsdigest.main | Poll returned 1 msgs in 811ms, offset→1131
+2026-04-13 00:06:49 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['ai'] user=7 chat=private:7
+2026-04-13 00:06:49 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'ai'
+2026-04-13 00:06:49 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='ai'
+2026-04-13 00:06:49 | INFO     | newsdigest.app.services.digest_service | After dedup: 5 items for 'ai'
+2026-04-13 00:06:49 | INFO     | newsdigest.app.services.summarizer | Calling Ollama model 'qwen2.5:7b' for keyword 'ai' (5 items)
+2026-04-13 00:10:07 | INFO     | newsdigest.main | Poll returned 1 msgs in 1347ms, offset→1135
+2026-04-13 00:10:07 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['小米'] user=7 chat=private:7
+2026-04-13 00:10:07 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '小米'
+2026-04-13 00:10:07 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='小米'
+2026-04-13 00:10:07 | INFO     | newsdigest.app.services.digest_service | After dedup: 5 items for '小米'
+2026-04-13 00:10:07 | INFO     | newsdigest.app.services.summarizer | Calling Ollama model 'qwen2.5:7b' for keyword '小米' (5 items)
+2026-04-13 00:10:19 | INFO     | newsdigest.main | Poll returned 1 msgs in 2276ms, offset→1136
+2026-04-13 00:10:19 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['ai'] user=7 chat=private:7
+2026-04-13 00:10:19 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'ai'
+2026-04-13 00:10:19 | INFO     | newsdigest.app.services.digest_service | Digest cache hit for 'ai'
+2026-04-13 00:14:19 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:14:19 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler shut down
+2026-04-13 00:14:19 | INFO     | apscheduler.scheduler | Scheduler has been shut down
+2026-04-13 00:14:19 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:14:19 | ERROR    | newsdigest.app.adapters.talkonly | getUpdates request failed: 
+2026-04-13 00:14:19 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:14:21 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:14:21 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:14:21 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:14:21 | INFO     | newsdigest.main | Using FakeSearchProvider (dev mode)
+2026-04-13 00:14:21 | INFO     | newsdigest.main | Starting NewsDigest (env=development)
+2026-04-13 00:14:21 | INFO     | newsdigest.main | DB warmed up, offset=1136
+2026-04-13 00:14:23 | INFO     | newsdigest.app.adapters.talkonly | Switched to polling mode: Webhook was deleted. Connect mode switched to polling.
+2026-04-13 00:14:23 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter started in polling mode
+2026-04-13 00:14:23 | INFO     | apscheduler.scheduler | Scheduler started
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler started
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restoring scheduled jobs from database...
+2026-04-13 00:14:23 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_小米' at 23:30 tz=Asia/Singapore, next_run=2026-04-13 23:30:00+08:00
+2026-04-13 00:14:23 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_苹果' at 23:37 tz=Asia/Singapore, next_run=2026-04-13 23:37:00+08:00
+2026-04-13 00:14:23 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_ai' at 23:39 tz=Asia/Singapore, next_run=2026-04-13 23:39:00+08:00
+2026-04-13 00:14:23 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restored 3 scheduled jobs
+2026-04-13 00:14:23 | INFO     | newsdigest.main | Polling started with offset=1136
+2026-04-13 00:14:38 | INFO     | newsdigest.main | Poll returned 1 msgs in 466ms, offset→1137
+2026-04-13 00:14:41 | INFO     | newsdigest.main | Poll returned 1 msgs in 2916ms, offset→1138
+2026-04-13 00:14:41 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['小米'] user=7 chat=private:7
+2026-04-13 00:14:41 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '小米'
+2026-04-13 00:14:41 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='小米'
+2026-04-13 00:14:41 | INFO     | newsdigest.app.services.digest_service | After dedup: 3 items for '小米'
+2026-04-13 00:14:41 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '小米' (3 items)
+2026-04-13 00:15:00 | INFO     | newsdigest.main | Poll returned 1 msgs in 2531ms, offset→1139
+2026-04-13 00:15:06 | INFO     | newsdigest.main | Poll returned 1 msgs in 1465ms, offset→1140
+2026-04-13 00:15:06 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['谷歌'] user=7 chat=private:7
+2026-04-13 00:15:06 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '谷歌'
+2026-04-13 00:15:06 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='谷歌'
+2026-04-13 00:15:06 | INFO     | newsdigest.app.services.digest_service | After dedup: 3 items for '谷歌'
+2026-04-13 00:15:06 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '谷歌' (3 items)
+2026-04-13 00:15:25 | INFO     | newsdigest.main | Poll returned 1 msgs in 1760ms, offset→1141
+2026-04-13 00:15:33 | INFO     | newsdigest.main | Poll returned 1 msgs in 3296ms, offset→1142
+2026-04-13 00:15:33 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['NVIDIA'] user=7 chat=private:7
+2026-04-13 00:15:33 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'NVIDIA'
+2026-04-13 00:15:33 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='NVIDIA'
+2026-04-13 00:15:33 | INFO     | newsdigest.app.services.digest_service | After dedup: 3 items for 'NVIDIA'
+2026-04-13 00:15:33 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for 'NVIDIA' (3 items)
+2026-04-13 00:20:20 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:20:20 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler shut down
+2026-04-13 00:20:20 | INFO     | apscheduler.scheduler | Scheduler has been shut down
+2026-04-13 00:20:20 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:20:20 | ERROR    | newsdigest.app.adapters.talkonly | getUpdates request failed: 
+2026-04-13 00:20:20 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:20:21 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:20:21 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:20:21 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:20:21 | INFO     | newsdigest.main | Using SearchProvider: google_news
+2026-04-13 00:20:21 | INFO     | newsdigest.main | Starting NewsDigest (env=development)
+2026-04-13 00:20:21 | INFO     | newsdigest.main | DB warmed up, offset=1142
+2026-04-13 00:20:22 | INFO     | newsdigest.app.adapters.talkonly | Switched to polling mode: Webhook was deleted. Connect mode switched to polling.
+2026-04-13 00:20:22 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter started in polling mode
+2026-04-13 00:20:22 | INFO     | apscheduler.scheduler | Scheduler started
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler started
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restoring scheduled jobs from database...
+2026-04-13 00:20:22 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_小米' at 23:30 tz=Asia/Singapore, next_run=2026-04-13 23:30:00+08:00
+2026-04-13 00:20:22 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_苹果' at 23:37 tz=Asia/Singapore, next_run=2026-04-13 23:37:00+08:00
+2026-04-13 00:20:22 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_ai' at 23:39 tz=Asia/Singapore, next_run=2026-04-13 23:39:00+08:00
+2026-04-13 00:20:22 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restored 3 scheduled jobs
+2026-04-13 00:20:22 | INFO     | newsdigest.main | Polling started with offset=1142
+2026-04-13 00:20:50 | INFO     | newsdigest.main | Poll returned 1 msgs in 2132ms, offset→1143
+2026-04-13 00:20:50 | INFO     | newsdigest.app.controllers.command_handler | Command received: /list args=[] user=7 chat=private:7
+2026-04-13 00:20:57 | INFO     | newsdigest.main | Poll returned 1 msgs in 3953ms, offset→1144
+2026-04-13 00:20:57 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['小米'] user=7 chat=private:7
+2026-04-13 00:20:57 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '小米'
+2026-04-13 00:20:57 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='小米'
+2026-04-13 00:20:58 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '小米' → 13 items. Top3: 小米“锁定”成都，“锁”的何止人才 | 郑丽文参观小米汽车工厂：想带一台回台湾 | 小米REDMI R70m / R70 5G手机现身中国电信终
+2026-04-13 00:20:58 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '小米'
+2026-04-13 00:20:58 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '小米' (8 items)
+2026-04-13 00:21:16 | INFO     | newsdigest.main | Poll returned 1 msgs in 835ms, offset→1145
+2026-04-13 00:21:16 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['苹果'] user=7 chat=private:7
+2026-04-13 00:21:16 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '苹果'
+2026-04-13 00:21:16 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='苹果'
+2026-04-13 00:21:17 | INFO     | newsdigest.main | Poll returned 1 msgs in 765ms, offset→1146
+2026-04-13 00:21:17 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['ai'] user=7 chat=private:7
+2026-04-13 00:21:17 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'ai'
+2026-04-13 00:21:17 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='ai'
+2026-04-13 00:21:17 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '苹果' → 13 items. Top3: 续航提升，健康应用升级 Apple Watch Series | 嫌苹果MacBook边框硌手，用户用锉刀自行打磨机身边角 | 苹果版套娃 买台Mac Pro回家：打开一看里面还藏着一台M
+2026-04-13 00:21:17 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '苹果'
+2026-04-13 00:21:17 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '苹果' (8 items)
+2026-04-13 00:21:18 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: 'ai' → 13 items. Top3: 岗位消失、专业停招，他们因为AI被迫“毕业” | AI“造黄”教程网络公然兜售 背后产业链曝光 | 张雪峰“AI技能包”引争议，法律怎么看？
+2026-04-13 00:21:18 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for 'ai'
+2026-04-13 00:21:18 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for 'ai' (8 items)
+2026-04-13 00:21:32 | INFO     | newsdigest.main | Poll returned 1 msgs in 1975ms, offset→1147
+2026-04-13 00:21:38 | INFO     | newsdigest.main | Poll returned 1 msgs in 2997ms, offset→1148
+2026-04-13 00:21:38 | INFO     | newsdigest.app.controllers.command_handler | Command received: /subscribe args=['NVIDIA', '00:21'] user=7 chat=private:7
+2026-04-13 00:21:38 | INFO     | newsdigest.app.services.subscription_service | Subscription created: user=1 keyword='NVIDIA' time=00:21 chat=private:7
+2026-04-13 00:21:38 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:21:38 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_NVIDIA' at 00:21 tz=Asia/Singapore, next_run=2026-04-14 00:21:00+08:00
+2026-04-13 00:21:40 | INFO     | newsdigest.main | Poll returned 1 msgs in 2141ms, offset→1149
+2026-04-13 00:21:40 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['NVIDIA'] user=7 chat=private:7
+2026-04-13 00:21:40 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'NVIDIA'
+2026-04-13 00:21:40 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='NVIDIA'
+2026-04-13 00:21:41 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: 'NVIDIA' → 13 items. Top3: 价值6.3亿元！中国某企业大量进口被禁的NVIDIA AI  | 8GB显卡再战十年不是吹牛！NVIDIA RTX神经纹理压缩 | 从 RTX 到 Spark：NVIDIA 为本地代理式 AI
+2026-04-13 00:21:41 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for 'NVIDIA'
+2026-04-13 00:21:41 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for 'NVIDIA' (8 items)
+2026-04-13 00:22:12 | INFO     | newsdigest.main | Poll returned 1 msgs in 2200ms, offset→1150
+2026-04-13 00:22:19 | INFO     | newsdigest.main | Poll returned 1 msgs in 2878ms, offset→1151
+2026-04-13 00:22:19 | INFO     | newsdigest.app.controllers.command_handler | Command received: /subscribe args=['迪士尼', '00:22'] user=7 chat=private:7
+2026-04-13 00:22:19 | INFO     | newsdigest.app.services.subscription_service | Subscription created: user=1 keyword='迪士尼' time=00:22 chat=private:7
+2026-04-13 00:22:19 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:22:19 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_迪士尼' at 00:22 tz=Asia/Singapore, next_run=2026-04-14 00:22:00+08:00
+2026-04-13 00:22:21 | INFO     | newsdigest.main | Poll returned 1 msgs in 2035ms, offset→1152
+2026-04-13 00:22:21 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['迪士尼'] user=7 chat=private:7
+2026-04-13 00:22:21 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '迪士尼'
+2026-04-13 00:22:21 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='迪士尼'
+2026-04-13 00:22:22 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '迪士尼' → 13 items. Top3: 张柏芝迪士尼亲子游_新浪新闻 | 靠“老儿子”爆火的迪士尼，还不能掉以轻心 | “乡”遇魔都｜一个“环迪士尼”乡村，探寻“留客”新思路
+2026-04-13 00:22:22 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '迪士尼'
+2026-04-13 00:22:22 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '迪士尼' (8 items)
+2026-04-13 00:25:53 | INFO     | newsdigest.main | Poll returned 1 msgs in 247ms, offset→1153
+2026-04-13 00:25:58 | INFO     | newsdigest.main | Poll returned 1 msgs in 1983ms, offset→1154
+2026-04-13 00:25:58 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['nasa'] user=7 chat=private:7
+2026-04-13 00:25:58 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for 'nasa'
+2026-04-13 00:25:58 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='nasa'
+2026-04-13 00:25:59 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: 'nasa' → 13 items. Top3: 探月竞争白热化：NASA的成功令中国“2030登月”目标备受 | 一边夸宇航员，一边猛砍NASA预算，“真是侮辱” | NASA“阿尔忒弥斯2号”飞船返回地球
+2026-04-13 00:25:59 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for 'nasa'
+2026-04-13 00:25:59 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for 'nasa' (8 items)
+2026-04-13 00:26:45 | INFO     | newsdigest.main | Poll returned 1 msgs in 3122ms, offset→1155
+2026-04-13 00:26:50 | INFO     | newsdigest.main | Poll returned 1 msgs in 1715ms, offset→1156
+2026-04-13 00:26:50 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['登月'] user=7 chat=private:7
+2026-04-13 00:26:50 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '登月'
+2026-04-13 00:26:50 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='登月'
+2026-04-13 00:26:51 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '登月' → 13 items. Top3: 探月竞争白热化：NASA的成功令中国“2030登月”目标备受 | 原来没丢啊！美国阿波罗11号首次登月代码公开：内存竟只有3. | 阿提米丝二号绕月任务取得巨大成功，真正的挑战尚在前面
+2026-04-13 00:26:51 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '登月'
+2026-04-13 00:26:51 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '登月' (8 items)
+2026-04-13 00:27:24 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:27:24 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler shut down
+2026-04-13 00:27:24 | INFO     | apscheduler.scheduler | Scheduler has been shut down
+2026-04-13 00:27:24 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:27:24 | ERROR    | newsdigest.app.adapters.talkonly | getUpdates request failed: 
+2026-04-13 00:27:24 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:27:25 | INFO     | newsdigest.main | Shutting down...
+2026-04-13 00:27:25 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter stopped
+2026-04-13 00:27:25 | INFO     | newsdigest.main | Shutdown complete
+2026-04-13 00:27:26 | INFO     | newsdigest.main | Using SearchProvider: google_news
+2026-04-13 00:27:26 | INFO     | newsdigest.main | Starting NewsDigest (env=development)
+2026-04-13 00:27:26 | INFO     | newsdigest.main | DB warmed up, offset=1156
+2026-04-13 00:27:26 | INFO     | newsdigest.app.adapters.talkonly | Switched to polling mode: Webhook was deleted. Connect mode switched to polling.
+2026-04-13 00:27:26 | INFO     | newsdigest.app.adapters.talkonly | TalkOnly adapter started in polling mode
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Scheduler started
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | APScheduler started
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restoring scheduled jobs from database...
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_NVIDIA' at 00:21 tz=Asia/Singapore, next_run=2026-04-14 00:21:00+08:00
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_迪士尼' at 00:22 tz=Asia/Singapore, next_run=2026-04-14 00:22:00+08:00
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_小米' at 23:30 tz=Asia/Singapore, next_run=2026-04-13 23:30:00+08:00
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_苹果' at 23:37 tz=Asia/Singapore, next_run=2026-04-13 23:37:00+08:00
+2026-04-13 00:27:26 | INFO     | apscheduler.scheduler | Added job "DigestScheduler._execute_push" to job store "default"
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Scheduled job 'digest_1_ai' at 23:39 tz=Asia/Singapore, next_run=2026-04-13 23:39:00+08:00
+2026-04-13 00:27:26 | INFO     | newsdigest.app.schedulers.digest_scheduler | Restored 5 scheduled jobs
+2026-04-13 00:27:26 | INFO     | newsdigest.main | Polling started with offset=1156
+2026-04-13 00:27:43 | INFO     | newsdigest.main | Poll returned 1 msgs in 3185ms, offset→1157
+2026-04-13 00:27:43 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['登月'] user=7 chat=private:7
+2026-04-13 00:27:43 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '登月'
+2026-04-13 00:27:43 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='登月'
+2026-04-13 00:27:43 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '登月' → 13 items. Top3: 探月竞争白热化：NASA的成功令中国“2030登月”目标备受 | 原来没丢啊！美国阿波罗11号首次登月代码公开：内存竟只有3. | 阿提米丝二号绕月任务取得巨大成功，真正的挑战尚在前面
+2026-04-13 00:27:43 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '登月'
+2026-04-13 00:27:43 | INFO     | newsdigest.app.services.summarizer | Keyword filter '登月': 8 → 5 items
+2026-04-13 00:27:43 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '登月' (5 items)
+2026-04-13 00:28:09 | INFO     | newsdigest.main | Poll returned 1 msgs in 2047ms, offset→1158
+2026-04-13 00:28:17 | INFO     | newsdigest.main | Poll returned 1 msgs in 1708ms, offset→1159
+2026-04-13 00:28:17 | INFO     | newsdigest.app.controllers.command_handler | Command received: /digest args=['即梦'] user=7 chat=private:7
+2026-04-13 00:28:17 | INFO     | newsdigest.app.controllers.command_handler | Immediate digest requested for '即梦'
+2026-04-13 00:28:17 | INFO     | newsdigest.app.services.digest_service | Generating digest for keyword='即梦'
+2026-04-13 00:28:18 | INFO     | newsdigest.app.services.search.google_news | GoogleNews: '即梦' → 13 items. Top3: 即梦刚涨价，Happy Horse超越Seedance 2. | 即梦上线首个Vibe Create工具“小章鱼” 支持多模态 | 即梦上线首个Vibe Create工具“小章鱼”，支持多模态
+2026-04-13 00:28:18 | INFO     | newsdigest.app.services.digest_service | After dedup: 8 items for '即梦'
+2026-04-13 00:28:18 | INFO     | newsdigest.app.services.summarizer | Keyword filter '即梦': 8 → 8 items
+2026-04-13 00:28:18 | INFO     | newsdigest.app.services.summarizer | Calling Ollama 'qwen2.5:7b' for '即梦' (6 items)
