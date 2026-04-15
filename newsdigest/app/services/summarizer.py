@@ -1,12 +1,12 @@
 """
-Ollama 本地大模型摘要服务（v3）
+Ollama 本地大模型摘要服务（v4 — 产品级调优）
 
-核心原则：
-1. 只允许基于输入内容总结，严禁编造
-2. 关键词过滤：丢弃不含关键词的资讯，杜绝跨主题污染
-3. 标题去重：相似标题只保留一条
-4. 内容不足时明确告知，不强行生成
-5. 输出结构化：编号事实 + 一句趋势
+核心变化：
+- Prompt 改为受控压缩，禁止自由发挥
+- 去掉"趋势"字段，只输出事实摘要
+- 输出为单段自然语言，不编号
+- temperature 0.15 / top_p 0.75 极度收敛
+- 模板化检测 + 幻觉检测保留
 """
 
 from __future__ import annotations
@@ -36,52 +36,33 @@ logger = get_logger(__name__)
 
 # ─── Prompt ───
 
-SUMMARIZE_PROMPT = """你是新闻编辑，不是AI助手。你的唯一任务是压缩下面的新闻条目。
+SUMMARIZE_PROMPT = """你是资讯编辑。把下面的新闻压缩成一段话。
 
-【铁律】
-- 只能使用下方提供的新闻内容，一个字也不能编造
-- 禁止出现输入中不存在的公司名、人名、数字、产品名
-- 禁止添加"近年来""业内人士""专家指出""市场规模"等泛化表达
-- 禁止跨条目混合不同公司/不同事件
-- 如果只有1-2条有效信息，就只总结这1-2条，不要凑字数
+铁律：
+1. 只用输入中已有的事实
+2. 围绕一个主线写，最多补充一条其他信息
+3. 非顶级媒体来源的重大消息（发布/收购/融资/销量数字），必须用"有消息称""据报道"等不确定语气
+4. 禁止"近日/业内人士/专家指出/备受瞩目"
+5. "同时/此外/另外"只能出现一次
+6. 不要出现与「{keyword}」无关的公司或品牌
+7. 100~120字，单段，不分点，不编号，不加标题
 
-【输出格式（严格遵守）】
-1️⃣ 第一条核心事实（一句话）
-2️⃣ 第二条核心事实（一句话）
-3️⃣ 第三条核心事实（一句话，如果有的话）
-
-趋势：基于上述事实的一句话总结（不超过20字）
-
-【约束】
-- 总字数不超过150字
-- 每条事实必须能在输入中找到原文依据
-- 没有第三条就只写两条，不要硬凑
-
-以下是关于「{keyword}」的新闻：
+关于「{keyword}」：
 
 {news_content}
 
-请直接按格式输出："""
+摘要："""
 
 # 兜底
 FALLBACK_MESSAGE = "今日暂未检索到「{keyword}」的相关资讯，明天继续为你关注。"
-INSUFFICIENT_MESSAGE = "当前关于「{keyword}」的有效资讯较少，暂无足够信息生成可靠摘要。"
+INSUFFICIENT_MESSAGE = "当前关于「{keyword}」的高质量资讯较少，暂无足够信息生成可靠摘要。"
 
 # 模板化检测
 _TEMPLATE_PHRASES = [
-    "近日", "近年来", "业内人士", "专家指出", "专家表示",
+    "近日", "近年来", "近期", "业内人士", "专家指出", "专家表示", "专家认为",
     "市场规模预计", "行业将迎来", "业界普遍认为", "据权威机构",
     "引发广泛关注", "值得关注的是", "备受瞩目",
-]
-
-# 输入清洗
-_NOISE_PATTERNS = [
-    re.compile(r"点击查看全文.*", re.IGNORECASE),
-    re.compile(r"展开全文.*", re.IGNORECASE),
-    re.compile(r"阅读原文.*", re.IGNORECASE),
-    re.compile(r"来源：.*$", re.MULTILINE),
-    re.compile(r"责任编辑：.*$", re.MULTILINE),
-    re.compile(r"\[.*?图片.*?\]"),
+    "多项重大进展", "信心爆棚", "引发热潮",
 ]
 
 _MAX_SNIPPET_LENGTH = 200
@@ -97,37 +78,33 @@ class SummarizerService:
     # ─── 主入口 ───
 
     async def summarize(self, keyword: str, items: list[NewsItem]) -> str:
+        """
+        接收已过滤+评分后的高质量条目，生成摘要。
+        本方法不再做关键词过滤（由上游 DigestService 完成）。
+        """
         if not items:
             return FALLBACK_MESSAGE.format(keyword=keyword)
 
-        # Step 1: 关键词过滤 — 只保留与关键词相关的条目
-        relevant = self._filter_by_keyword(items, keyword)
-        logger.info(
-            "Keyword filter '%s': %d → %d items",
-            keyword, len(items), len(relevant),
-        )
+        # 去重（标题相似度 > 80%）
+        deduped = self._dedup_by_similarity(items)
 
-        # Step 2: 去重（标题相似度 > 80%）
-        deduped = self._dedup_by_similarity(relevant)
-
-        # Step 3: 清洗、截断
-        cleaned = self._clean_items(deduped)
-
-        # Step 5: 兜底检查
-        if len(cleaned) < 2:
+        if len(deduped) < 2:
             return INSUFFICIENT_MESSAGE.format(keyword=keyword)
 
-        # 限量
-        cleaned = cleaned[:6]
+        # 来源多样性检查：至少 2 个不同来源
+        sources = {(it.source or "").strip().lower() for it in deduped if it.source}
+        if len(sources) < 2 and len(deduped) >= 3:
+            logger.warning("Only %d source(s) for '%s', proceeding with caution", len(sources), keyword)
 
-        # Step 4: 构建输入 → 调用模型
-        news_content = self._build_input(cleaned)
+        # 限量 + 构建输入
+        deduped = deduped[:5]
+        news_content = self._build_input(deduped)
         prompt = SUMMARIZE_PROMPT.format(keyword=keyword, news_content=news_content)
 
-        logger.info("Calling Ollama '%s' for '%s' (%d items)", self._model, keyword, len(cleaned))
+        logger.info("Calling Ollama '%s' for '%s' (%d items)", self._model, keyword, len(deduped))
 
         try:
-            summary = await self._call_ollama(prompt, temperature=0.2)
+            summary = await self._call_ollama(prompt, temperature=0.15)
             summary = self._clean_output(summary)
 
             if not summary:
@@ -136,14 +113,20 @@ class SummarizerService:
             # 模板化检测 → retry
             if self._is_templated(summary):
                 logger.info("Template detected for '%s', retrying", keyword)
-                retry_prompt = prompt + "\n\n【再次提醒】严禁使用'近日''专家''业内人士'等词，只提取原文事实。"
-                retry_summary = await self._call_ollama(retry_prompt, temperature=0.15)
+                retry_prompt = prompt + "\n\n【警告】你的上一次输出包含模板话术。请只提取原文中的具体事实，不要添加任何总结性、评价性语句。"
+                retry_summary = await self._call_ollama(retry_prompt, temperature=0.1)
                 retry_summary = self._clean_output(retry_summary)
                 if retry_summary:
                     summary = retry_summary
 
-            # 验证：检查输出是否提及了不存在于输入中的公司名（基础幻觉检测）
-            summary = self._hallucination_check(summary, cleaned, keyword)
+            # 幻觉检测
+            summary = self._hallucination_check(summary, deduped, keyword)
+
+            # 高风险语气降级（后处理）
+            summary = self._downgrade_risky_tone(summary)
+
+            # 实体一致性：删除与关键词无关的句子
+            summary = self._entity_consistency(summary, keyword)
 
             return summary
 
@@ -151,26 +134,10 @@ class SummarizerService:
             logger.error("Ollama summarize failed for '%s': %s", keyword, e)
             return FALLBACK_MESSAGE.format(keyword=keyword)
 
-    # ─── Step 1: 关键词过滤 ───
-
-    @staticmethod
-    def _filter_by_keyword(items: list[NewsItem], keyword: str) -> list[NewsItem]:
-        """只保留标题或内容前100字包含关键词的条目。"""
-        kw_lower = keyword.lower()
-        # 中文关键词不转 lower（无意义），英文关键词忽略大小写
-        result: list[NewsItem] = []
-        for item in items:
-            title = item.title.lower()
-            content_head = item.snippet[:100].lower()
-            if kw_lower in title or kw_lower in content_head:
-                result.append(item)
-        return result
-
-    # ─── Step 2: 标题相似度去重 ───
+    # ─── 标题相似度去重 ───
 
     @staticmethod
     def _dedup_by_similarity(items: list[NewsItem], threshold: float = 0.8) -> list[NewsItem]:
-        """标题相似度 > threshold 的只保留第一条。"""
         result: list[NewsItem] = []
         for item in items:
             is_dup = False
@@ -183,39 +150,19 @@ class SummarizerService:
                 result.append(item)
         return result
 
-    # ─── Step 3: 清洗 ───
-
-    @staticmethod
-    def _clean_items(items: list[NewsItem]) -> list[NewsItem]:
-        result: list[NewsItem] = []
-        for item in items:
-            snippet = item.snippet.strip()
-            for pattern in _NOISE_PATTERNS:
-                snippet = pattern.sub("", snippet)
-            snippet = snippet.strip()
-
-            if not snippet or len(snippet) < 10:
-                continue
-            if len(snippet) > _MAX_SNIPPET_LENGTH:
-                snippet = snippet[:_MAX_SNIPPET_LENGTH] + "…"
-
-            result.append(NewsItem(
-                title=item.title.strip(),
-                snippet=snippet,
-                source=item.source,
-                url=item.url,
-                published_at=item.published_at,
-            ))
-        return result
-
     # ─── 构建模型输入 ───
 
     @staticmethod
     def _build_input(items: list[NewsItem]) -> str:
+        """只给模型标题 + 核心事实 + 来源，不灌杂乱正文。"""
         parts: list[str] = []
         for i, item in enumerate(items, 1):
-            source_tag = f"（{item.source}）" if item.source else ""
-            parts.append(f"[{i}] {item.title}{source_tag}\n{item.snippet}")
+            source_tag = f"（来源：{item.source}）" if item.source else ""
+            # 截断 snippet，只保留核心部分
+            snippet = item.snippet.strip()
+            if len(snippet) > _MAX_SNIPPET_LENGTH:
+                snippet = snippet[:_MAX_SNIPPET_LENGTH] + "…"
+            parts.append(f"[{i}] {item.title} {source_tag}\n{snippet}")
         return "\n\n".join(parts)
 
     # ─── 输出清洗 ───
@@ -225,13 +172,27 @@ class SummarizerService:
         if not text:
             return ""
         text = text.strip()
+        # 去常见前缀
         for prefix in ("摘要：", "摘要如下：", "总结如下：", "以下是摘要：", "总结："):
             if text.startswith(prefix):
                 text = text[len(prefix):].strip()
-        # 去 markdown
+        # 去末尾 (XX字) / （XX字）/ (约XX字) 等字数标注（qwen 模型常见行为）
+        text = re.sub(r"[（(]\s*(?:约|共)?\s*\d+\s*字\s*[）)]?\s*$", "", text)
+        text = re.sub(r"[（(]\s*(?:约|共)?\s*\d+\s*(?:个字|字符|words)\s*[）)]?\s*$", "", text, flags=re.IGNORECASE)
+        # 去 markdown / emoji
         text = re.sub(r"[*#_`]", "", text)
-        # 去多余空行
-        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r"[\U0001f300-\U0001f9ff]", "", text)
+        # 去编号格式（如果模型仍然输出了编号）
+        text = re.sub(r"^[1-9][️⃣]?\s*", "", text, flags=re.MULTILINE)
+        text = re.sub(r"^[①②③④⑤]\s*", "", text, flags=re.MULTILINE)
+        # 去"趋势："行（如果模型仍然输出了）
+        text = re.sub(r"趋势[：:].+$", "", text, flags=re.MULTILINE)
+        # 去多余空行，合并为单段
+        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        text = "；".join(lines) if len(lines) > 1 else (lines[0] if lines else "")
+        # 确保以句号结尾
+        if text and text[-1] not in ("。", ".", "；"):
+            text += "。"
         return text.strip()
 
     # ─── 模板化检测 ───
@@ -239,45 +200,110 @@ class SummarizerService:
     @staticmethod
     def _is_templated(text: str) -> bool:
         count = sum(1 for phrase in _TEMPLATE_PHRASES if phrase in text)
-        # 命中 2 个以上才判定（单个可能是原文引用）
         return count >= 2
 
-    # ─── 幻觉检测（基础版） ───
+    # ─── 幻觉检测 ───
 
     @staticmethod
     def _hallucination_check(summary: str, items: list[NewsItem], keyword: str) -> str:
-        """
-        检查摘要中是否出现了输入中完全不存在的实体。
-        如果检测到明显幻觉，返回安全的纯提取版本。
-        """
-        # 收集输入中出现过的所有文本
         all_input_text = keyword.lower()
         for item in items:
             all_input_text += " " + item.title.lower() + " " + item.snippet.lower()
 
-        # 检查摘要中的中文引号内容是否在输入中有依据
         quoted = re.findall(r"\u300c(.+?)\u300d|\u201c(.+?)\u201d", summary)
         for groups in quoted:
             for q in groups:
                 if q and len(q) > 2 and q.lower() not in all_input_text:
-                    logger.warning("Hallucination detected: '%s' not in input, using safe fallback", q)
-                    # 回退到安全的纯标题列表
+                    logger.warning("Hallucination detected: '%s' not in input", q)
                     titles = [f"· {item.title}" for item in items[:5]]
-                    return f"「{keyword}」今日资讯要点：\n" + "\n".join(titles)
+                    return f"{keyword}今日资讯要点：\n" + "\n".join(titles)
 
         return summary
 
+    # ─── 高风险语�����级 ───
+
+    @staticmethod
+    def _downgrade_risky_tone(text: str) -> str:
+        """
+        将确定语气的高风险表述降级为不确定���气。
+        例："苹果将发布" → "有消息称苹果将发布"
+        只处理没有保护性前缀的句子。
+        """
+        # 已经有保护性前缀的不处理
+        _safe_prefixes = ("有消���称", "据报道", "据悉", "市场消息显示", "媒体报道称")
+
+        # 需要降级的高风险动词/短语
+        _risky_patterns = [
+            (re.compile(r"(?<!据报道)(?<!有消息称)(?<!据悉)(确认发布|确认推出|即将发布|即将推出)"), r"据报道\1"),
+            (re.compile(r"(?<!据报道)(?<!有消息称)(首款|首个|全球首)"), r"据报道为\1"),
+            (re.compile(r"(?<!据报道)(?<!有消息称)(将解决|将实现|将突破)"), r"有望\1".replace("将", "")),
+        ]
+
+        for pattern, replacement in _risky_patterns:
+            if any(p in text for p in _safe_prefixes):
+                break  # 整段已有保护前缀，不再处理
+            new_text = pattern.sub(replacement, text)
+            if new_text != text:
+                logger.info("TONE downgraded: %s", pattern.pattern)
+                text = new_text
+
+        return text
+
+    # ─── 实体一致���检查 ───
+
+    @staticmethod
+    def _entity_consistency(summary: str, keyword: str) -> str:
+        """
+        检查摘要中按分号/句号分割的各个分句，
+        如果某分句完全不包含关键词且不像补充信息，则删除。
+        """
+        kw_lower = keyword.lower()
+        # 按分号或句号切句
+        parts = re.split(r"[；;。]", summary)
+        parts = [p.strip() for p in parts if p.strip()]
+
+        if len(parts) <= 1:
+            return summary  # 只有一句，不处理
+
+        kept: list[str] = []
+        removed = 0
+        for i, part in enumerate(parts):
+            part_lower = part.lower()
+            # 第一句（主线）始终保留
+            if i == 0:
+                kept.append(part)
+                continue
+            # 包含关键词，保留
+            if kw_lower in part_lower:
+                kept.append(part)
+                continue
+            # 不含关键词但是短补充（< 25 字），保留（可能是紧接上文的补充）
+            if len(part) < 25:
+                kept.append(part)
+                continue
+            # 否则删除
+            logger.info("ENTITY removed off-topic clause: %s", part[:30])
+            removed += 1
+
+        if not kept:
+            return summary
+
+        result = "；".join(kept)
+        if result and result[-1] not in ("。", "；"):
+            result += "。"
+        return result
+
     # ─── Ollama 调用 ───
 
-    async def _call_ollama(self, prompt: str, temperature: float = 0.2) -> str:
+    async def _call_ollama(self, prompt: str, temperature: float = 0.15) -> str:
         payload = {
             "model": self._model,
             "prompt": prompt,
             "stream": False,
             "options": {
                 "temperature": temperature,
-                "top_p": 0.8,
-                "num_predict": 350,
+                "top_p": 0.75,
+                "num_predict": 300,
             },
         }
 

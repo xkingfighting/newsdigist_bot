@@ -138,3 +138,24 @@ class SubscriptionService:
         logger.info("Subscription resumed: user=%d keyword='%s'", user.id, keyword)
         sub = await self._sub_repo.get_by_id(sub.id)
         return True, f"已恢复「{keyword}」的推送。", sub
+
+    async def set_all_time(
+        self, user: User, push_time: str, chat_id: int, chat_type: str,
+    ) -> tuple[int, list]:
+        """
+        将当前聊天上下文中所有活跃订阅的推送时间统一修改。
+        返回 (修改数量, 修改后的订阅列表)。
+        """
+        if not _TIME_RE.match(push_time):
+            return 0, []
+
+        subs = await self._sub_repo.list_by_chat(user.id, chat_id, chat_type)
+        active_subs = [s for s in subs if s.status == "active"]
+
+        for sub in active_subs:
+            await self._sub_repo.update_push_time(sub.id, push_time)
+
+        logger.info("Set all push_time to %s: user=%d count=%d", push_time, user.id, len(active_subs))
+        # 刷新数据
+        updated = await self._sub_repo.list_by_chat(user.id, chat_id, chat_type)
+        return len(active_subs), [s for s in updated if s.status == "active"]

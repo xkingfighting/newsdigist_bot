@@ -110,6 +110,12 @@ class SubscriptionRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def update_push_time(self, subscription_id: int, push_time: str) -> None:
+        sub = await self._session.get(Subscription, subscription_id)
+        if sub is not None:
+            sub.push_time = push_time
+            await self._session.flush()
+
     async def update_status(self, subscription_id: int, status: str) -> None:
         sub = await self._session.get(Subscription, subscription_id)
         if sub is not None:

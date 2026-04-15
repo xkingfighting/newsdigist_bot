@@ -1,6 +1,5 @@
 """
 跨层共享的数据结构定义
-用 dataclass 而非 ORM model，避免层间耦合。
 """
 
 from __future__ import annotations
@@ -14,7 +13,6 @@ from enum import Enum
 
 @dataclass
 class NewsItem:
-    """搜索 Provider 返回的标准资讯条目"""
     title: str
     snippet: str
     source: str
@@ -22,7 +20,7 @@ class NewsItem:
     published_at: datetime | None = None
 
 
-# ─── 订阅状态 ───
+# ─── 枚举 ───
 
 class SubscriptionStatus(str, Enum):
     ACTIVE = "active"
@@ -30,42 +28,62 @@ class SubscriptionStatus(str, Enum):
     DELETED = "deleted"
 
 
-# ─── 推送状态 ───
-
 class PushStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
 
 
-# ─── 平台消息（适配器层对业务层暴露的统一结构）───
+# ─── 平台消息 ───
 
 @dataclass
 class IncomingMessage:
-    """从平台收到的用户消息"""
     platform: str
     update_id: int
     user_id: int
     user_name: str
     chat_id: int
-    chat_type: str  # "private" | "group"
+    chat_type: str
     text: str
     timestamp: int = 0
+    # callback query 字段（按钮点击时填充）
+    callback_query_id: str = ""
+    callback_data: str = ""
 
 
 @dataclass
 class BotCommand:
-    """解析后的命令"""
-    name: str          # 如 "subscribe", "list", "digest"
+    name: str
     args: list[str] = field(default_factory=list)
     raw_text: str = ""
     message: IncomingMessage | None = None
 
 
-# ─── Bot 回复（支持纯文本和富卡片）───
+# ─── Rich Text Entity ───
+
+@dataclass
+class TextEntity:
+    """富文本实体（粗体、链接等），offset/length 按 UTF-16 计算。"""
+    type: str              # bold / italic / code / text_link / underline
+    offset: int
+    length: int
+    url: str = ""          # type=text_link 时必填
+
+
+# ─── Inline Keyboard Button ───
+
+@dataclass
+class InlineButton:
+    """内联键盘按钮，三种类型互斥。"""
+    text: str
+    url: str = ""              # 打开链接
+    callback_data: str = ""    # 回调给 Bot
+    copy_text: str = ""        # 复制到剪贴板
+
+
+# ─── Bot 回复 ───
 
 @dataclass
 class CardItem:
-    """ListCard 中的列表项"""
     title: str
     description: str = ""
     command: str = ""
@@ -73,25 +91,37 @@ class CardItem:
 
 @dataclass
 class CardButton:
-    """ActionCard 中的按钮"""
     label: str
     command: str
-    style: str = ""  # "primary" | ""
+    style: str = ""
 
 
 @dataclass
 class BotReply:
     """
     命令处理器的统一返回结构。
-    text 非空时发纯文本；card_type 非空时发富卡片。
+    支持：纯文本 / 旧版卡片 / Rich Text + Inline Keyboard
     """
     text: str = ""
-    card_type: int = 0       # 0=纯文本, 10=ActionCard, 11=ListCard
+
+    # 旧版卡片（兼容保留）
+    card_type: int = 0
     card_title: str = ""
     card_text: str = ""
     card_items: list[CardItem] = field(default_factory=list)
     card_buttons: list[CardButton] = field(default_factory=list)
 
+    # Rich Text（新特性）
+    entities: list[TextEntity] = field(default_factory=list)
+
+    # Inline Keyboard（新特性）
+    inline_keyboard: list[list[InlineButton]] = field(default_factory=list)
+
     @property
     def is_card(self) -> bool:
         return self.card_type in (10, 11)
+
+    @property
+    def is_rich(self) -> bool:
+        """有 entities 或 inline_keyboard 时走 rich text 通道。"""
+        return bool(self.entities or self.inline_keyboard)

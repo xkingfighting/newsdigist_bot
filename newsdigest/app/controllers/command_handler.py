@@ -31,6 +31,7 @@ WELCOME_TEXT = """👋 欢迎使用 NewsDigest！
 /subscribe <关键词> <HH:MM> - 创建订阅
 /list - 查看所有订阅
 /unsubscribe - 取消订阅
+/settime <HH:MM> - 统一修改推送时间
 /pause - 暂停订阅
 /resume - 恢复订阅
 /digest <关键词> - 立即获取摘要
@@ -47,6 +48,10 @@ HELP_TEXT = """📖 NewsDigest 命令帮助
 
 /unsubscribe
   取消订阅（交互式选择）
+
+/settime <HH:MM>
+  统一修改所有订阅的推送时间
+  示例：/settime 08:00
 
 /pause
   暂停推送（交互式选择）
@@ -97,9 +102,11 @@ class CommandHandler:
             "unsub_yes": self._handle_unsub_yes,
             "unsub_all": self._handle_unsub_all,
             "unsub_all_yes": self._handle_unsub_all_yes,
+            "settime": self._handle_settime,
             "pause": self._handle_pause,
             "resume": self._handle_resume,
             "digest": self._handle_digest,
+            "digest_refresh": self._handle_digest_refresh,
         }
 
         handler = handler_map.get(cmd.name)
@@ -299,6 +306,42 @@ class CommandHandler:
 
         return _text(f"已取消全部 {count} 个订阅。")
 
+    # ─── 统一修改时间 ───
+
+    async def _handle_settime(self, cmd: BotCommand, session: AsyncSession) -> BotReply:
+        """
+        /settime HH:MM — 将所有活跃订阅的推送时间统一修改。
+        """
+        if not cmd.args:
+            return _text("用法：/settime <HH:MM>\n示例：/settime 08:00\n将所有订阅的推送时间统一修改。")
+
+        push_time = cmd.args[0]
+        msg = cmd.message
+        svc = self._build_svc(session)
+        user = await svc.ensure_user(
+            platform=msg.platform,
+            platform_user_id=msg.user_id,
+            display_name=msg.user_name,
+        )
+
+        import re
+        if not re.match(r"^([01]\d|2[0-3]):([0-5]\d)$", push_time):
+            return _text(f"时间格式不正确，请使用 HH:MM（如 08:00）。收到: {push_time}")
+
+        count, updated_subs = await svc.set_all_time(user, push_time, msg.chat_id, msg.chat_type)
+
+        if count == 0:
+            return _text("没有活跃的订阅可以修改。")
+
+        # 重新注册所有调度任务
+        if self._scheduler_register and self._scheduler_remove:
+            for sub in updated_subs:
+                self._scheduler_remove(user.id, sub.keyword)
+                await self._scheduler_register(sub, user)
+
+        keywords = "、".join(f"「{s.keyword}」" for s in updated_subs)
+        return _text(f"已将 {count} 个订阅的推送时间统一修改为 {push_time}。\n{keywords}")
+
     # ─── 暂停 ───
 
     async def _handle_pause(self, cmd: BotCommand, session: AsyncSession) -> BotReply:
@@ -385,17 +428,65 @@ class CommandHandler:
         logger.info("Immediate digest requested for '%s'", keyword)
 
         summary = await self._digest_service.generate_digest(keyword)
-        return _text(f"📰 {keyword} 资讯摘要\n\n{summary}")
+        return self._build_digest_reply(keyword, summary)
+
+    async def _handle_digest_refresh(self, cmd: BotCommand, session: AsyncSession) -> BotReply:
+        """刷新按钮：跳过缓存重新生成摘要。"""
+        if not cmd.args:
+            return _text("操作无效。")
+
+        keyword = cmd.args[0]
+        logger.info("Digest refresh requested for '%s'", keyword)
+
+        summary = await self._digest_service.generate_digest(keyword, skip_cache=True)
+        return self._build_digest_reply(keyword, summary)
+
+    # ─── 摘要富文本构建 ───
+
+    @staticmethod
+    def _build_digest_reply(keyword: str, summary: str) -> BotReply:
+        """
+        构建摘要回复：
+        - 标题加粗（entities）
+        - inline keyboard：刷新 / 订阅 / 复制
+        """
+        from newsdigest.app.schemas.types import TextEntity, InlineButton
+        from datetime import datetime
+        import pytz
+        from newsdigest.app.core.config import settings
+
+        title = f"{keyword} 资讯摘要"
+        full_text = f"{title}\n\n{summary}"
+
+        # 标题加粗 entity（UTF-16 长度计算）
+        title_utf16_len = len(title.encode("utf-16-le")) // 2
+        entities = [TextEntity(type="bold", offset=0, length=title_utf16_len)]
+
+        # 默认订阅时间 = 当前时间
+        tz = pytz.timezone(settings.digest.default_timezone)
+        now_str = datetime.now(tz).strftime("%H:%M")
+
+        # Inline keyboard
+        keyboard = [[
+            InlineButton(text="刷新", callback_data=f"digest_refresh:{keyword}"),
+            InlineButton(text=f"订阅（每天 {now_str}）", callback_data=f"subscribe:{keyword} {now_str}"),
+            InlineButton(text="复制摘要", copy_text=summary),
+        ]]
+
+        return BotReply(
+            text=full_text,
+            entities=entities,
+            inline_keyboard=keyboard,
+        )
 
     # ─── 私聊纯文本智能响应 ───
 
     async def handle_text(self, msg, session: AsyncSession) -> BotReply:
         """
-        私聊中用户发送非命令文本时：
-        - 如果文本匹配已有订阅关键词 → 提供「立即摘要 / 取消订阅」
-        - 如果不匹配 → 提供「立即摘要 / 订阅（默认当前时间）」
+        私聊中用户发送非命令文本时，用 inline keyboard 引导。
         """
-        from newsdigest.app.schemas.types import IncomingMessage
+        from newsdigest.app.schemas.types import InlineButton
+
         text = msg.text.strip()
         if not text:
             return _text("输入 /help 查看可用命令。")
@@ -407,23 +498,19 @@ class CommandHandler:
             display_name=msg.user_name,
         )
 
-        # 查找该关键词是否已订阅
         sub = await SubscriptionRepository(session).find_by_keyword_in_chat(
             keyword=text, chat_id=msg.chat_id, chat_type=msg.chat_type, user_id=user.id,
         )
 
         if sub:
-            # 已订阅 → 立即摘要 or 取消
             return BotReply(
-                card_type=10,
-                card_text=f"「{text}」已在你的订阅中（每天 {sub.push_time}）",
-                card_buttons=[
-                    CardButton(label="立即获取摘要", command=f"/digest {text}", style="primary"),
-                    CardButton(label="取消订阅", command=f"/unsubscribe {text}"),
-                ],
+                text=f"「{text}」已在你的订阅中（每天 {sub.push_time}）",
+                inline_keyboard=[[
+                    InlineButton(text="立即获取摘要", callback_data=f"digest:{text}"),
+                    InlineButton(text="取消订阅", callback_data=f"unsubscribe:{text}"),
+                ]],
             )
         else:
-            # 未订阅 → 立即摘要 or 订阅
             from datetime import datetime
             import pytz
             from newsdigest.app.core.config import settings
@@ -431,12 +518,11 @@ class CommandHandler:
             now_str = datetime.now(tz).strftime("%H:%M")
 
             return BotReply(
-                card_type=10,
-                card_text=f"你想了解「{text}」的最新资讯吗？",
-                card_buttons=[
-                    CardButton(label="立即获取摘要", command=f"/digest {text}", style="primary"),
-                    CardButton(label=f"订阅（每天 {now_str} 推送）", command=f"/subscribe {text} {now_str}"),
-                ],
+                text=f"你想了解「{text}」的最新资讯吗？",
+                inline_keyboard=[[
+                    InlineButton(text="立即获取摘要", callback_data=f"digest:{text}"),
+                    InlineButton(text=f"订阅（每天 {now_str}）", callback_data=f"subscribe:{text} {now_str}"),
+                ]],
             )
 
     # ─── 工具 ───

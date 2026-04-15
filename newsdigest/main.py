@@ -118,7 +118,12 @@ class NewsDigestBot:
         logger.info("DB warmed up, offset=%d", self._offset)
 
     async def _send_reply(self, msg: IncomingMessage, reply: BotReply) -> None:
-        if reply.is_card:
+        """发送回复：优先 rich text → 旧卡片 → 纯文本。"""
+        if reply.is_rich:
+            await self._platform.send_rich_message(
+                chat_id=msg.chat_id, reply=reply, chat_type=msg.chat_type,
+            )
+        elif reply.is_card:
             await self._platform.send_card(
                 chat_id=msg.chat_id, reply=reply, chat_type=msg.chat_type,
             )
@@ -195,9 +200,15 @@ class NewsDigestBot:
 
     async def _handle_message(self, msg: IncomingMessage) -> None:
         session_factory = get_session_factory()
+
+        # ── Callback Query 处理 ──
+        if msg.callback_data:
+            await self._handle_callback(msg, session_factory)
+            return
+
         cmd = self._platform.parse_command(msg)
 
-        # send_typing fire-and-forget，不阻塞命令处理
+        # send_typing fire-and-forget
         asyncio.create_task(self._platform.send_typing(msg.chat_id, msg.chat_type))
 
         if cmd is None:
@@ -209,6 +220,60 @@ class NewsDigestBot:
                     reply = await self._command_handler.handle_text(msg, session)
 
             await self._send_reply(msg, reply)
+            return
+
+        async with session_factory() as session:
+            async with session.begin():
+                reply = await self._command_handler.handle(cmd, session)
+
+        await self._send_reply(msg, reply)
+
+    async def _handle_callback(self, msg: IncomingMessage, session_factory) -> None:
+        """
+        处理 inline keyboard 按钮点击回调。
+        callback_data 格式约定: "action:payload"，例如 "digest:小米"、"subscribe:AI 08:00"
+        """
+        data = msg.callback_data
+        logger.info("Callback query: user=%d data='%s'", msg.user_id, data)
+
+        # 防连点去重（同一 callback_query_id 只处理一次）
+        dedup_key = f"newsdigest:cb_dedup:{msg.callback_query_id}"
+        try:
+            from newsdigest.app.core.redis import get_redis
+            redis = get_redis()
+            if await redis.get(dedup_key):
+                logger.info("Duplicate callback ignored: %s", msg.callback_query_id)
+                asyncio.create_task(self._platform.answer_callback(msg.callback_query_id))
+                return
+            await redis.set(dedup_key, "1", ex=60)
+        except Exception:
+            pass
+
+        # 解析 action:payload
+        if ":" in data:
+            action, payload = data.split(":", 1)
+        else:
+            action, payload = data, ""
+
+        # 应答回调（先应答，30 秒内必须）
+        asyncio.create_task(
+            self._platform.answer_callback(msg.callback_query_id, text="处理中...")
+        )
+
+        # 将 callback 转为命令处理
+        cmd_msg = IncomingMessage(
+            platform=msg.platform,
+            update_id=msg.update_id,
+            user_id=msg.user_id,
+            user_name=msg.user_name,
+            chat_id=msg.chat_id,
+            chat_type=msg.chat_type,
+            text=f"/{action} {payload}".strip() if payload else f"/{action}",
+            timestamp=msg.timestamp,
+        )
+
+        cmd = self._platform.parse_command(cmd_msg)
+        if cmd is None:
             return
 
         async with session_factory() as session:
