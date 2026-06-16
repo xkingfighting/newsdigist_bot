@@ -67,6 +67,15 @@ _TEMPLATE_PHRASES = [
 
 _MAX_SNIPPET_LENGTH = 200
 
+_OLLAMA_MAX_ATTEMPTS = 3
+_OLLAMA_RETRY_BACKOFF = 5.0
+_OLLAMA_RETRYABLE_EXC = (
+    httpx.RemoteProtocolError,
+    httpx.ConnectError,
+    httpx.ReadTimeout,
+    httpx.ReadError,
+)
+
 
 class SummarizerService:
 
@@ -308,15 +317,37 @@ class SummarizerService:
         }
 
         async with _get_ollama_sem():
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    f"{self._base_url}/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            last_exc: Exception | None = None
+            for attempt in range(1, _OLLAMA_MAX_ATTEMPTS + 1):
+                try:
+                    # trust_env=False: Ollama 是本地服务，绕过 macOS 系统代理
+                    async with httpx.AsyncClient(timeout=self._timeout, trust_env=False) as client:
+                        resp = await client.post(
+                            f"{self._base_url}/generate",
+                            json=payload,
+                        )
+                        resp.raise_for_status()
+                        data = resp.json()
+                    return data.get("response", "")
+                except httpx.HTTPStatusError as e:
+                    # 4xx 客户端错误重试无意义
+                    if not (500 <= e.response.status_code < 600):
+                        raise
+                    last_exc = e
+                except _OLLAMA_RETRYABLE_EXC as e:
+                    last_exc = e
 
-            return data.get("response", "")
+                if attempt < _OLLAMA_MAX_ATTEMPTS:
+                    logger.warning(
+                        "Ollama attempt %d/%d failed (%s: %s), retrying in %.1fs",
+                        attempt, _OLLAMA_MAX_ATTEMPTS,
+                        type(last_exc).__name__, last_exc,
+                        _OLLAMA_RETRY_BACKOFF,
+                    )
+                    await asyncio.sleep(_OLLAMA_RETRY_BACKOFF)
+
+            assert last_exc is not None
+            raise last_exc
 
     # ─── 序列化 ───
 

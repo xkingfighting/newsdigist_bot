@@ -75,3 +75,76 @@ def test_items_to_json():
     items = [_item("测试", "内容")]
     data = json.loads(SummarizerService.items_to_json(items))
     assert data[0]["title"] == "测试"
+
+
+@pytest.mark.asyncio
+async def test_call_ollama_retries_then_succeeds(monkeypatch):
+    import httpx
+
+    from newsdigest.app.services import summarizer as mod
+
+    monkeypatch.setattr(mod, "_OLLAMA_RETRY_BACKOFF", 0.0)
+
+    call_count = {"n": 0}
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": "ok"}
+
+    class _FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *_a, **_kw):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+            return _Resp()
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", _FakeClient)
+
+    svc = SummarizerService()
+    result = await svc._call_ollama("prompt")
+    assert result == "ok"
+    assert call_count["n"] == 3
+
+
+@pytest.mark.asyncio
+async def test_call_ollama_gives_up_after_max_attempts(monkeypatch):
+    import httpx
+
+    from newsdigest.app.services import summarizer as mod
+
+    monkeypatch.setattr(mod, "_OLLAMA_RETRY_BACKOFF", 0.0)
+
+    call_count = {"n": 0}
+
+    class _FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *_a, **_kw):
+            call_count["n"] += 1
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", _FakeClient)
+
+    svc = SummarizerService()
+    with pytest.raises(httpx.RemoteProtocolError):
+        await svc._call_ollama("prompt")
+    assert call_count["n"] == mod._OLLAMA_MAX_ATTEMPTS
