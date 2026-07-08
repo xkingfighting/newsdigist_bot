@@ -20,6 +20,9 @@ logger = get_logger(__name__)
 
 class TalkOnlyAdapter(BotPlatform):
 
+    # 连续传输层故障达到该阈值后重建 client，丢弃被死连接污染的连接池。
+    _POOL_RESET_THRESHOLD = 3
+
     def __init__(self) -> None:
         self._base_url = settings.talkonly.base_url
         self._token = settings.talkonly.bot_secret
@@ -29,20 +32,43 @@ class TalkOnlyAdapter(BotPlatform):
             "Content-Type": "application/json",
         }
         self._client: httpx.AsyncClient | None = None
+        # 连续传输层失败计数，用于触发连接池自愈重建
+        self._consecutive_failures = 0
 
     @property
     def platform_name(self) -> str:
         return "talkonly"
 
-    async def start(self) -> None:
-        self._client = httpx.AsyncClient(
+    def _new_client(self) -> httpx.AsyncClient:
+        # keepalive_expiry 让空闲连接尽快过期回收：远端/代理常悄悄断开长轮询的
+        # keepalive 连接，若不设过期，这些半死连接会一直占着池位直至 PoolTimeout。
+        return httpx.AsyncClient(
             timeout=httpx.Timeout(
                 connect=5.0,
                 read=self._timeout + 5.0,
                 write=5.0,
                 pool=5.0,
             ),
+            limits=httpx.Limits(
+                max_connections=20,
+                max_keepalive_connections=5,
+                keepalive_expiry=15.0,
+            ),
         )
+
+    async def _reset_client(self) -> None:
+        """丢弃可能被死连接污染的连接池，重建 client，实现无需重启的自愈。"""
+        old, self._client = self._client, self._new_client()
+        self._consecutive_failures = 0
+        if old is not None:
+            try:
+                await old.aclose()
+            except Exception:
+                pass
+        logger.warning("TalkOnly client pool reset")
+
+    async def start(self) -> None:
+        self._client = self._new_client()
         await self._delete_webhook()
         logger.info("TalkOnly adapter started in polling mode")
 
@@ -74,10 +100,27 @@ class TalkOnlyAdapter(BotPlatform):
                 f"{self._base_url}/getUpdates", headers=self._headers, json=payload,
             )
             data = resp.json()
+            self._consecutive_failures = 0
         except httpx.ReadTimeout:
+            # 长轮询正常超时（服务端本轮无消息），立即重试，不算故障
+            self._consecutive_failures = 0
+            return []
+        except httpx.TransportError as e:
+            # 连接池/连接层故障（PoolTimeout / 连接断开 / 代理 drop 等）。
+            # 连续多次即认定连接池被死连接污染，重建 client 自愈；否则退避重试，
+            # 避免热重试以 pool 超时的节奏（~5s）持续空转、把服务端和 CPU 打满。
+            self._consecutive_failures += 1
+            logger.error(
+                "getUpdates transport failure #%d: %r",
+                self._consecutive_failures, e,
+            )
+            if self._consecutive_failures >= self._POOL_RESET_THRESHOLD:
+                await self._reset_client()
+            await asyncio.sleep(3)
             return []
         except Exception as e:
-            logger.error("getUpdates failed: %s", e)
+            logger.error("getUpdates failed: %r", e)
+            await asyncio.sleep(1)
             return []
 
         if not data.get("ok"):
@@ -305,5 +348,5 @@ class TalkOnlyAdapter(BotPlatform):
             logger.error("sendMessage failed: %s", data)
             return False
         except Exception as e:
-            logger.error("sendMessage error: %s", e)
+            logger.error("sendMessage error: %r", e)
             return False
